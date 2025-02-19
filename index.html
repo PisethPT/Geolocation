@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        .container{
+            align-content: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="display"></div>
+        <button id="geolocation" onclick="Geolocation()">Geolocation</button>
+    </div>
+    
+    <script>
+
+        class GeolocationModel{
+            constructor(latitude, longitude, accuracy){
+                this.latitude = latitude;
+                this.longitude = longitude;
+                this.accuracy = accuracy;
+            }
+        }
+
+        function Geolocation(){
+            let display = document.getElementById('display');
+            display.innerText = '';
+            if(navigator.geolocation)
+                navigator.geolocation.getCurrentPosition(showPosition, showErro, {enableHighAccuracy: true, timeout: 5000, maximumAge: 0});
+            else
+                alert("Geolocation is not supported by this browser.");
+
+            function showPosition(position){
+                let Geolocation = new GeolocationModel();
+                Geolocation.latitude = position.coords.latitude;
+                Geolocation.longitude = position.coords.longitude;
+                Geolocation.accuracy = position.coords.accuracy;
+
+                display.innerText = `latitude: ${Geolocation.latitude}, longitude: ${Geolocation.longitude}, accuracy: ${Geolocation.accuracy}`;
+                console.log(JSON.stringify(Geolocation));
+
+                window.addEventListener('message', function(event){
+                    if(event.origin !== 'https://m01zjlgv-5500.asse.devtunnels.ms'){
+                        console.log('Untrusted origin: ', event.origin);
+                        return;
+                    }
+                    if(event.data === 'data'){
+                        event.source.postMessage({
+                            dataSource: JSON.stringify(Geolocation)
+                        }, event.origin);
+                    }
+                });
+            }
+
+            function showErro(error){
+                switch(error.code){
+                    case error.PERMISSION_DENIED:
+                    alert("User denied the request for Geolocation.");
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    alert("Location information is unavailable.");
+                    break;
+                case error.TIMEOUT:
+                    alert("The request to get user location timed out.");
+                    break;
+                case error.UNKNOWN_ERROR:
+                    alert("An unknown error occurred.");
+                    break;
+                }
+            }
+        }
+    </script>
+</body>
+</html>
