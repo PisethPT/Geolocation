@@ -3,13 +3,148 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Iframe Content</title>
+    <title>Document</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.13.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/jsqr/dist/jsQR.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        .container{
+            display: flex;
+            height: 90vh;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #scan-block{
+            display: none;
+        }
+
+        .iframe {
+            display: flex;
+            position: relative;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            width: 300px;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        video, canvas {
+            width: 100%;
+        }
+
+        #scanner-btn {
+            display: flex;
+            justify-content: center;
+            background-color: #1f3a93bd;
+            align-self: center;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            outline: none;
+            border: none;
+        }
+    </style>
 </head>
 <body>
     <div id="display"></div>
-    <button onclick="Geolocation()">Geolocation</button>
+
+     <!-- Scan attendance -->
+      <div class="container">
+        <div id="scan-block">
+            <div class="iframe">
+                <video id="video-scan" autoplay></video>
+            </div>
+        </div>
+    
+        <button id="scanner-btn">
+            <i style="font-size: 23px; align-self: center; color: white;" class="fa fa-square" aria-hidden="true"></i>
+        </button>
+      </div>
 
     <script>
+        const videoElement = document.getElementById('video-scan');
+        let currentStream = null;
+        let startScan = document.getElementById('scanner-btn');
+        let scanBlock = document.getElementById('scan-block');
+
+        startScan.addEventListener('click', function(){
+            scanBlock.style.display = 'inline';
+            startScan.style.display = 'none';
+            startCamera();
+        });
+
+        // Function to start the camera
+        function startCamera() {
+            if (currentStream) {
+                currentStream.getTracks().forEach(track => track.stop());
+            }
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+                .then((stream) => {
+                    currentStream = stream;
+                    videoElement.srcObject = stream;
+                    videoElement.setAttribute('playsinline', true); // Required for iOS
+                    videoElement.play()
+                        .then(() => {
+                            scanQRCode(); // Start scanning after the video starts playing
+                        })
+                        .catch((err) => {
+                            console.error('Error playing video:', err);
+                        });
+                })
+                .catch((err) => {
+                    console.error('Error accessing camera:', err);
+                    if (err.name === 'NotAllowedError') {
+                        alert('Please allow access to the camera and close any overlays or bubbles from other apps.');
+                    } else if (err.name === 'NotFoundError') {
+                        alert('No camera found. Please ensure your device has a camera.');
+                    } else {
+                        alert('Error accessing the camera. Please try again.');
+                    }
+                });
+        }
+
+        // Function to stop the camera
+        function stopCamera() {
+            if (currentStream) {
+                currentStream.getTracks().forEach(track => track.stop());
+                currentStream = null;
+                videoElement.srcObject = null;
+                scanBlock.style.display = 'none';
+                startScan.style.display = 'inline';
+            }
+        }
+
+        // Function to capture the video frame and scan for QR codes
+        function scanQRCode() {
+            const canvasElement = document.createElement('canvas');
+            const context = canvasElement.getContext('2d');
+        
+            canvasElement.width = videoElement.videoWidth;
+            canvasElement.height = videoElement.videoHeight;
+        
+            context.drawImage(videoElement, 0, 0, canvasElement.width, canvasElement.height);
+        
+            const imageData = context.getImageData(0, 0, canvasElement.width, canvasElement.height);
+            const qrCode = jsQR(imageData.data, canvasElement.width, canvasElement.height);
+        
+            if (qrCode) {
+                console.log('QR Code detected:', qrCode.data);
+                alert(`QR Code detected: ${qrCode.data}`);
+                stopCamera(); // Stop the camera after detecting a QR code
+                Geolocation();
+            } else {
+                // Continue scanning if no QR code is detected
+                if (!videoElement.paused) {
+                    requestAnimationFrame(scanQRCode);
+                }
+            }
+        }
+
         function Geolocation() {
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(showPosition, showError, {
@@ -35,7 +170,20 @@
             }
 
             function showError(error) {
-                alert(`Error: ${error.message}`);
+                switch (error.code) {
+                    case error.PERMISSION_DENIED:
+                        alert("User denied the request for Geolocation.");
+                        break;
+                    case error.POSITION_UNAVAILABLE:
+                        alert("Location information is unavailable.");
+                        break;
+                    case error.TIMEOUT:
+                        alert("The request to get user location timed out.");
+                        break;
+                    case error.UNKNOWN_ERROR:
+                        alert("An unknown error occurred.");
+                        break;
+                }
             }
         }
 
