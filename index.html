@@ -44,15 +44,16 @@
                 console.log(JSON.stringify(Geolocation));
 
                 window.addEventListener('message', function(event){
-                    if(event.origin !== 'https://pisethpt.github.io'){
+                    if(event.origin !== 'https://m01zjlgv-5500.asse.devtunnels.ms'){
                         console.log('Untrusted origin: ', event.origin);
                         return;
                     }
-                    if(event.data === 'data'){
+                    if(event.data && event.data.action === 'data'){
                         event.source.postMessage({
                             dataSource: JSON.stringify(Geolocation)
                         }, event.origin);
                     }
+                    
                 });
             }
 
