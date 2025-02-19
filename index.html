@@ -3,77 +3,49 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
-    <style>
-        .container{
-            align-content: center;
-        }
-    </style>
+    <title>Iframe Content</title>
 </head>
 <body>
-    <div class="container">
-        <div id="display"></div>
-        <button id="geolocation" onclick="Geolocation()">Geolocation</button>
-    </div>
-    
+    <div id="display"></div>
+    <button onclick="Geolocation()">Geolocation</button>
+
     <script>
-
-        class GeolocationModel{
-            constructor(latitude, longitude, accuracy){
-                this.latitude = latitude;
-                this.longitude = longitude;
-                this.accuracy = accuracy;
-            }
-        }
-
-        function Geolocation(){
-            let display = document.getElementById('display');
-            display.innerText = '';
-            if(navigator.geolocation)
-                navigator.geolocation.getCurrentPosition(showPosition, showErro, {enableHighAccuracy: true, timeout: 5000, maximumAge: 0});
-            else
-                alert("Geolocation is not supported by this browser.");
-
-            function showPosition(position){
-                let Geolocation = new GeolocationModel();
-                Geolocation.latitude = position.coords.latitude;
-                Geolocation.longitude = position.coords.longitude;
-                Geolocation.accuracy = position.coords.accuracy;
-
-                display.innerText = `latitude: ${Geolocation.latitude}, longitude: ${Geolocation.longitude}, accuracy: ${Geolocation.accuracy}`;
-                console.log(JSON.stringify(Geolocation));
-
-                window.addEventListener('message', function(event){
-                    if(event.origin !== 'https://m01zjlgv-5500.asse.devtunnels.ms'){
-                        console.log('Untrusted origin: ', event.origin);
-                        return;
-                    }
-                    if(event.data && event.data.action === 'data'){
-                        event.source.postMessage({
-                            dataSource: JSON.stringify(Geolocation)
-                        }, event.origin);
-                    }
-                    
+        function Geolocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(showPosition, showError, {
+                    enableHighAccuracy: true,
+                    timeout: 5000,
+                    maximumAge: 0
                 });
+            } else {
+                alert("Geolocation is not supported by this browser.");
             }
 
-            function showErro(error){
-                switch(error.code){
-                    case error.PERMISSION_DENIED:
-                    alert("User denied the request for Geolocation.");
-                    break;
-                case error.POSITION_UNAVAILABLE:
-                    alert("Location information is unavailable.");
-                    break;
-                case error.TIMEOUT:
-                    alert("The request to get user location timed out.");
-                    break;
-                case error.UNKNOWN_ERROR:
-                    alert("An unknown error occurred.");
-                    break;
-                }
+            function showPosition(position) {
+                const data = {
+                    latitude: position.coords.latitude,
+                    longitude: position.coords.longitude,
+                    accuracy: position.coords.accuracy
+                };
+
+                document.getElementById('display').innerText = `Latitude: ${data.latitude}, Longitude: ${data.longitude}, Accuracy: ${data.accuracy}`;
+
+                // Send data to the parent page
+                window.parent.postMessage({ dataSource: JSON.stringify(data) }, '*');
+            }
+
+            function showError(error) {
+                alert(`Error: ${error.message}`);
             }
         }
+
+        // Listen for messages from the parent page
+        window.addEventListener('message', (event) => {
+            if (event.data && event.data.action === 'requestData') {
+                // Send data back to the parent page
+                Geolocation();
+            }
+        });
     </script>
 </body>
 </html>
